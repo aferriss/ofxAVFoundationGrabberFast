@@ -23,7 +23,7 @@
 
 class ofAVFoundationGrabberFast;
 
-@interface OSXVideoGrabber : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate> {
+@interface OSXVideoGrabberFast : NSObject <AVCaptureVideoDataOutputSampleBufferDelegate> {
 
 	@public
 	CGImageRef currentFrame;	
@@ -68,15 +68,15 @@ class ofAVFoundationGrabberFast : virtual public ofBaseVideoGrabber{
 	
 		void setDeviceID(int deviceID);
 		void setDesiredFrameRate(int capRate);
-		bool setPixelFormat(ofPixelFormat PixelFormat);
+        bool setPixelFormat(ofPixelFormat PixelFormat);
 
         bool setup(int w, int h);
 		void update();
 		bool isFrameNew() const;
 		void close();
 	
-		ofPixels&		 		getPixels();
-        const ofPixels&		    getPixels() const;
+        ofPixels&                 getPixels();
+        const ofPixels&            getPixels() const;
 
 		float getWidth() const{
 			return width;
@@ -87,12 +87,15 @@ class ofAVFoundationGrabberFast : virtual public ofBaseVideoGrabber{
 
         bool isInitialized() const;
 	
-		void updatePixelsCB();
+        void updatePixelsCB();
 		vector <ofVideoDevice> listDevices() const;
-		ofPixelFormat getPixelFormat() const;
+        ofPixelFormat getPixelFormat() const;
     
         ofTexture * getTexture();
         ofTexture texture;
+        ofFpsCounter counter;
+        double getFps();
+        bool needsPixels;
 	
 	protected:
 		bool newFrame = false;
@@ -108,7 +111,7 @@ class ofAVFoundationGrabberFast : virtual public ofBaseVideoGrabber{
 		ofPixels pixels;
 
 		#ifdef __OBJC__
-			OSXVideoGrabber * grabber;
+			OSXVideoGrabberFast * grabber;
 		#else
 			void * grabber;
 		#endif

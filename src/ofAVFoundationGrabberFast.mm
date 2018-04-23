@@ -8,7 +8,7 @@
 
 #import <Accelerate/Accelerate.h>
 
-@interface OSXVideoGrabber () {
+@interface OSXVideoGrabberFast () {
     
     CVOpenGLTextureCacheRef videoTextureCache;
     //    CVOpenGLESTextureRef internalTexture;
@@ -17,11 +17,12 @@
     BOOL isFrameNew;
     size_t texWidth;
     size_t texHeight;
+    BOOL returnPixels;
 }
 @property (nonatomic,retain) AVCaptureSession *captureSession;
 @end
 
-@implementation OSXVideoGrabber
+@implementation OSXVideoGrabberFast
 @synthesize captureSession;
 
 #pragma mark -
@@ -39,6 +40,7 @@
         width = 0;
         height = 0;
         currentFrame = 0;
+       
 	}
 	return self;
 }
@@ -47,6 +49,7 @@
     
     cvFrame = NULL;
     hasNewFrame = NO;
+    returnPixels = NO;
     
     CVReturn err = CVOpenGLTextureCacheCreate(kCFAllocatorDefault, nullptr, CGLGetCurrentContext(), CGLGetPixelFormat(CGLGetCurrentContext()), nullptr, &videoTextureCache);
 
@@ -150,7 +153,7 @@
 			
 			[device unlockForConfiguration];
 		} else {
-			NSLog(@"OSXVideoGrabber Init Error: %@", error);
+			NSLog(@"OSXVideoGrabberFast Init Error: %@", error);
 		}
 
 		// We setup the input
@@ -196,7 +199,7 @@
 		// In this example we set a min frame duration of 1/10 seconds so a maximum framerate of 10fps. We say that
 		// we are not able to process more than 10 frames per second.
 		// Called after added to captureSession
-        
+//        ofLogError("ofAVFoundationGrabberFast") << "ERror" << framerate;
 		AVCaptureConnection *conn = [captureOutput connectionWithMediaType:AVMediaTypeVideo];
 		if ([conn isVideoMinFrameDurationSupported] == YES &&
 			[conn isVideoMaxFrameDurationSupported] == YES) {
@@ -281,14 +284,13 @@
 didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer 
 	   fromConnection:(AVCaptureConnection *)connection 
 {
-    
+    /*
 	if(grabberPtr != NULL) {
-        BOOL returnPixels = false;
         
         if(returnPixels){
 		@autoreleasepool {
-            cout << "TEST" << endl;
-			CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer); 
+//            cout << "TEST" << endl;
+			CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
 			// Lock the image buffer
 			CVPixelBufferLockBaseAddress(imageBuffer,0); 
 
@@ -332,16 +334,16 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                     err = vImageConvert_BGRA8888toRGB888(&srcImg, &dstImg, kvImageNoFlags);
                     cout << "THIS IS NOT HAPPENING" << endl;
                     if(err != kvImageNoError){
-//                        ofLogError("test");
-                        ofLogError("ofAVFoundationGrabberFast") << "Error using accelerate to convert bgra to rgb with vImageConvert_BGRA8888toRGB888 error: " << err;
+//                        ofLogError("ofAVFoundationGrabberFast") << "Error using accelerate to convert bgra to rgb with vImageConvert_BGRA8888toRGB888 error: " << err;
+                        ofLogError("ofAVFoundationGrabberFast") << "ERror" << err;
                     } else {
-                    
+                        
                         if( grabberPtr->capMutex.try_lock() ){
                             grabberPtr->pixelsTmp = rgbConvertPixels;
                             grabberPtr->updatePixelsCB();
                             grabberPtr->capMutex.unlock();
                         }
-                    
+                        
                     }
 				}
 				
@@ -353,6 +355,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             CVOpenGLTextureRef internalTexture = NULL;
             CVImageBufferRef toRelease;
             @synchronized (self) {
+//                cout << "test" << endl;
                 toRelease = cvFrame;
                 CVBufferRetain(CMSampleBufferGetImageBuffer(sampleBuffer));
                 cvFrame = CMSampleBufferGetImageBuffer(sampleBuffer);
@@ -363,9 +366,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             }
         }
 	}
-     
+     */
     
-    /*
+    
     if(grabberPtr != NULL){
         CVOpenGLTextureRef internalTexture = NULL;
         CVImageBufferRef toRelease;
@@ -379,12 +382,15 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             }
         }
     }
-     */
+    
 }
 
 - (void) updateTexture{
     @synchronized (self) {
         if(hasNewFrame){
+            grabberPtr->counter.newFrame();
+            
+//            cout << ofToString(grabberPtr->counter.getFps()) << endl;
             
             CVOpenGLTextureRef internalTexture = NULL;
             CVPixelBufferLockBaseAddress(cvFrame, 0);
@@ -471,7 +477,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
 ofAVFoundationGrabberFast::ofAVFoundationGrabberFast(){
 	fps		= -1;
-	grabber = [OSXVideoGrabber alloc];
+	grabber = [OSXVideoGrabberFast alloc];
     width = 0;
     height = 0;
 	bIsInit = false; 
@@ -479,6 +485,7 @@ ofAVFoundationGrabberFast::ofAVFoundationGrabberFast(){
 	newFrame = false;
 	bHavePixelsChanged = false;
 	bLock = false;
+    needsPixels = false;
 }
 
 ofAVFoundationGrabberFast::~ofAVFoundationGrabberFast(){
@@ -496,7 +503,7 @@ void ofAVFoundationGrabberFast::clear(){
 void ofAVFoundationGrabberFast::close(){
 	bLock = true;
 	if(grabber) {
-		// Stop and release the the OSXVideoGrabber
+		// Stop and release the the OSXVideoGrabberFast
 		[grabber stopCapture];
 		[grabber eraseGrabberPtr];
 		[grabber release];
@@ -520,7 +527,7 @@ void ofAVFoundationGrabberFast::setDesiredFrameRate(int capRate){
 bool ofAVFoundationGrabberFast::setup(int w, int h){
 
 	if( grabber == nil ){
-		grabber = [OSXVideoGrabber alloc];
+		grabber = [OSXVideoGrabberFast alloc];
 	}
 	
 	grabber->grabberPtr = this;
@@ -559,23 +566,23 @@ bool ofAVFoundationGrabberFast::isInitialized() const{
 
 void ofAVFoundationGrabberFast::update(){
     
-    BOOL needsPixels = false;
+//    BOOL needsPixels = false;
     
-    if(needsPixels){
-        newFrame = false;
-        
-        if (bHavePixelsChanged == true){
-            capMutex.lock();
-                pixels = pixelsTmp;
-                bHavePixelsChanged = false;
-            capMutex.unlock();
-            newFrame = true;
-        }
-    } else {
+//    if(needsPixels){
+//        newFrame = false;
+//
+//        if (bHavePixelsChanged == true){
+//            capMutex.lock();
+//                pixels = pixelsTmp;
+//                bHavePixelsChanged = false;
+//            capMutex.unlock();
+//            newFrame = true;
+//        }
+//    } else {
         if(bIsInit){
             [grabber updateTexture];
         }
-    }
+//    }
 }
 
 ofPixels & ofAVFoundationGrabberFast::getPixels(){
@@ -630,11 +637,15 @@ bool ofAVFoundationGrabberFast::setPixelFormat(ofPixelFormat PixelFormat) {
 }
 
 ofPixelFormat ofAVFoundationGrabberFast::getPixelFormat() const{
-	return pixelFormat;
+    return pixelFormat;
 }
 
 ofTexture * ofAVFoundationGrabberFast::getTexture() {
     return &texture;
+}
+
+double ofAVFoundationGrabberFast::getFps(){
+    return counter.getFps();
 }
 
 #endif
