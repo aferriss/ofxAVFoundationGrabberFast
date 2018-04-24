@@ -24,21 +24,22 @@ void ofApp::draw(){
     img.setFromPixels(slowGrab.getPixels());
     img.draw(640, 0, 640, 360);
     
-    if(ofGetFrameNum() > 60){
-        // discard the first second
+    if(grabber.getFps() > 25 && slowGrab.getFps() > 25){
+        // discard them if they're not init-ed
         // note that getFps was added custom to AVFoundationGrabber and doesn't exist by default
         // it adds an ofFpsCounter object to the grabber and inside the captureOutput function calls counter.newFrame()
         // check the fast grabber src for a similar thing
         avgFast += grabber.getFps();
         avgSlow += slowGrab.getFps();
+        frameCount++;
     }
     
     
     ofDrawBitmapString(ofToString(grabber.getFps()), 320, 180);
-    ofDrawBitmapString(ofToString(avgFast / ofGetFrameNum() ), 320, 240);
+    ofDrawBitmapString(ofToString(avgFast / frameCount ), 320, 240);
     
     ofDrawBitmapString(ofToString(slowGrab.getFps()), 960, 180);
-    ofDrawBitmapString(ofToString(avgSlow / ofGetFrameNum()), 960, 240);
+    ofDrawBitmapString(ofToString(avgSlow / frameCount ), 960, 240);
 }
 
 //--------------------------------------------------------------

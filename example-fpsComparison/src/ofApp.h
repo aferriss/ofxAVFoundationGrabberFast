@@ -29,4 +29,5 @@ class ofApp : public ofBaseApp{
         ofAVFoundationGrabber slowGrab;
     
         double avgFast, avgSlow;
+        int frameCount;
 };
